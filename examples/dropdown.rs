@@ -26,7 +26,7 @@ impl App for ExampleApp {
                     .select_on_focus(true)
                     // passes through the desired width to the text edit
                     // default is None internally, so TextEdit does whatever its default implements
-                    .desired_width(250.0),
+                    .text_properties(move |te| te.desired_width(250.0))
                 );
 
                 if ui.button("Add").clicked() {

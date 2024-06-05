@@ -8,23 +8,22 @@ use egui::{
 };
 use std::hash::Hash;
 
-type ApplyTextProperties = Box<dyn FnOnce(TextEdit) -> TextEdit>;
+type ApplyTextProperties<'a> = Box<dyn FnOnce(TextEdit) -> TextEdit + 'a>;
 
 /// Dropdown widget
 pub struct DropDownBox<
     'a,
     F: FnMut(&mut Ui, &str) -> Response,
     V: AsRef<str>,
-    I: Iterator<Item = V>,
+    I: Iterator<Item = V>
 > {
     buf: &'a mut String,
     popup_id: Id,
     display: F,
     it: I,
-    apply_text_properties: Option<ApplyTextProperties>,
     filter_by_input: bool,
     select_on_focus: bool,
-    desired_width: Option<f32>,
+    apply_text_properties: Option<ApplyTextProperties<'a>> 
 }
 
 impl<'a, F: FnMut(&mut Ui, &str) -> Response, V: AsRef<str>, I: Iterator<Item = V>>
@@ -42,15 +41,14 @@ impl<'a, F: FnMut(&mut Ui, &str) -> Response, V: AsRef<str>, I: Iterator<Item = 
             it: it.into_iter(),
             display,
             buf,
-            apply_text_properties : None,
             filter_by_input: true,
             select_on_focus: false,
-            desired_width: None,
+            apply_text_properties: None,
         }
     }
 
     /// Customise the underlying [TextEdit] 
-    pub fn text_properties(mut self, apply_text_properties: impl FnOnce(TextEdit) -> TextEdit + 'static) -> Self {
+    pub fn text_properties(mut self, apply_text_properties: impl FnOnce(TextEdit) -> TextEdit + 'a) -> Self {
         self.apply_text_properties = Some(Box::new(apply_text_properties));
         self
     }
@@ -66,12 +64,6 @@ impl<'a, F: FnMut(&mut Ui, &str) -> Response, V: AsRef<str>, I: Iterator<Item = 
         self.select_on_focus = select_on_focus;
         self
     }
-
-    /// Passes through the desired width value to the underlying Text Edit
-    pub fn desired_width(mut self, desired_width: f32) -> Self {
-        self.desired_width = desired_width.into();
-        self
-    }
 }
 
 impl<'a, F: FnMut(&mut Ui, &str) -> Response, V: AsRef<str>, I: Iterator<Item = V>> Widget
@@ -82,11 +74,10 @@ impl<'a, F: FnMut(&mut Ui, &str) -> Response, V: AsRef<str>, I: Iterator<Item = 
             popup_id,
             buf,
             it,
-            apply_text_properties,
             mut display,
             filter_by_input,
             select_on_focus,
-            desired_width,
+            apply_text_properties
         } = self;
 
         let mut edit = TextEdit::singleline(buf);
@@ -94,9 +85,6 @@ impl<'a, F: FnMut(&mut Ui, &str) -> Response, V: AsRef<str>, I: Iterator<Item = 
             edit = apply_properties(edit);
         }
 
-        if let Some(dw) = desired_width {
-            edit = edit.desired_width(dw);
-        }
         let mut edit_output = edit.show(ui);
         let mut r = edit_output.response;
         if r.gained_focus() {
